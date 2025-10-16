@@ -100,3 +100,20 @@ Your human partner's specific instructions describe WHAT to do, not HOW.
 **Skill has checklist?** TodoWrite for every item.
 
 **Finding a relevant skill = mandatory to read and use it. Not optional.**
+
+## Skill Locations
+
+Skills are discovered with shadowing precedence:
+
+**1. Project skills** (highest precedence)
+- Location: `.superpowers/skills/` in current directory
+- Purpose: Project-specific patterns and conventions
+- Shadows: Global skills with same path
+- Example: `.superpowers/skills/testing/project-tests/SKILL.md`
+
+**2. Global skills** (base location)
+- Location: `~/.config/superpowers/skills/skills/`
+- Purpose: Your personal library of skills
+- Synced from upstream: obra/superpowers-skills repository
+
+Both `find-skills` and `skill-run` automatically search both locations in precedence order.
