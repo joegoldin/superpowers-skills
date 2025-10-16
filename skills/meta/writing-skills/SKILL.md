@@ -47,16 +47,21 @@ The entire skill creation process follows RED-GREEN-REFACTOR.
 
 ## When to Create a Skill
 
-**Create when:**
+**Create a global skill when:**
 - Technique wasn't intuitively obvious to you
 - You'd reference this again across projects
 - Pattern applies broadly (not project-specific)
 - Others would benefit
 
-**Don't create for:**
+**Create a project skill when:**
+- Technique is specific to this project/codebase
+- Pattern only applies within this team or repository
+- Project-specific conventions and workflows
+- Team wants to version-control shared techniques
+
+**Don't create a skill for:**
 - One-off solutions
 - Standard practices well-documented elsewhere
-- Project-specific conventions (put in CLAUDE.md)
 
 ## Skill Types
 
@@ -71,7 +76,7 @@ API docs, syntax guides, tool documentation (office docs)
 
 ## Directory Structure
 
-**All skills are in the skills repository at `${SUPERPOWERS_SKILLS_ROOT}`:**
+**Global skills are in the skills repository at `${SUPERPOWERS_SKILLS_ROOT}`:**
 
 ```
 ${SUPERPOWERS_SKILLS_ROOT}
@@ -80,7 +85,20 @@ ${SUPERPOWERS_SKILLS_ROOT}
     supporting-file.*     # Only if needed
 ```
 
-**Flat namespace** - all skills in one searchable location
+**Project skills are in your project's `.superpowers/skills/` directory:**
+
+```
+.superpowers/skills/
+  skill-name/
+    SKILL.md              # Main reference (required)
+    supporting-file.*     # Only if needed
+```
+
+**Key differences:**
+
+- **Global skills**: Synced from `obra/superpowers-skills`, shared across all projects
+- **Project skills**: Committed to your project repo, shared with team via version control
+- **Shadowing**: Project skills override global skills with the same path
 
 **Separate files for:**
 1. **Heavy reference** (100+ lines) - API docs, comprehensive syntax

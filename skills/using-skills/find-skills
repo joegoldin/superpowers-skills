@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # find-skills - Find and list skills with when_to_use guidance
 # Shows all skills by default, filters by pattern if provided
+# Searches project skills (.superpowers/skills), then global
 
 set -euo pipefail
 
 # Determine directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILLS_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+GLOBAL_SKILLS_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 SUPERPOWERS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/superpowers"
 LOG_FILE="${SUPERPOWERS_DIR}/search-log.jsonl"
@@ -29,10 +30,13 @@ EXAMPLES:
 OUTPUT:
   Each line shows: Use skill-path/SKILL.md when [trigger]
   Paths include /SKILL.md for direct use with Read tool
+  Project skills from .superpowers/skills shown first
+  Global skills shown last
 
 SEARCH:
   Searches both skill content AND path names.
-  Skills location: ~/.config/superpowers/skills/
+  Project skills: .superpowers/skills/ in current directory
+  Global skills: ~/.config/superpowers/skills/skills/
 EOF
     exit 0
 fi
@@ -56,6 +60,7 @@ get_skill_path() {
 
 # Collect all matching skills
 results=()
+seen_skills_list=""
 
 # If pattern provided, log the search
 if [[ -n "$PATTERN" ]]; then
@@ -63,23 +68,50 @@ if [[ -n "$PATTERN" ]]; then
     echo "{\"timestamp\":\"$timestamp\",\"query\":\"$PATTERN\"}" >> "$LOG_FILE" 2>/dev/null || true
 fi
 
-# Search skills directory
+# Search current directory .superpowers/skills first
+PROJECT_SKILLS_DIR="$PWD/.superpowers/skills"
+if [[ -d "$PROJECT_SKILLS_DIR" ]]; then
+    while IFS= read -r file; do
+        [[ -z "$file" ]] && continue
+
+        skill_path=$(get_skill_path "$file" "$PROJECT_SKILLS_DIR")
+        when_to_use=$(get_when_to_use "$file")
+
+        seen_skills_list="${seen_skills_list}${skill_path}"$'\n'
+        results+=("$skill_path|$when_to_use")
+    done < <(
+        if [[ -n "$PATTERN" ]]; then
+            {
+                grep -E -r "$PATTERN" "$PROJECT_SKILLS_DIR/" --include="SKILL.md" -l 2>/dev/null || true
+                find "$PROJECT_SKILLS_DIR/" -name "SKILL.md" -type f 2>/dev/null | grep -E "$PATTERN" 2>/dev/null || true
+            } | sort -u
+        else
+            find "$PROJECT_SKILLS_DIR/" -name "SKILL.md" -type f 2>/dev/null || true
+        fi
+    )
+fi
+
+# Search global skills directory (skip if shadowed)
 while IFS= read -r file; do
     [[ -z "$file" ]] && continue
 
-    skill_path=$(get_skill_path "$file" "$SKILLS_DIR")
+    skill_path=$(get_skill_path "$file" "$GLOBAL_SKILLS_DIR")
+
+    # Skip if shadowed by project skills
+    if [[ -n "$seen_skills_list" ]]; then
+        echo "$seen_skills_list" | grep -q "^${skill_path}$" && continue
+    fi
+
     when_to_use=$(get_when_to_use "$file")
     results+=("$skill_path|$when_to_use")
 done < <(
     if [[ -n "$PATTERN" ]]; then
-        # Pattern mode: search content and paths
         {
-            grep -E -r -- "$PATTERN" "$SKILLS_DIR/" --include="SKILL.md" -l 2>/dev/null || true
-            find "$SKILLS_DIR/" -name "SKILL.md" -type f 2>/dev/null | grep -E -- "$PATTERN" 2>/dev/null || true
+            grep -E -r -- "$PATTERN" "$GLOBAL_SKILLS_DIR/" --include="SKILL.md" -l 2>/dev/null || true
+            find "$GLOBAL_SKILLS_DIR/" -name "SKILL.md" -type f 2>/dev/null | grep -E -- "$PATTERN" 2>/dev/null || true
         } | sort -u
     else
-        # Show all
-        find "$SKILLS_DIR/" -name "SKILL.md" -type f 2>/dev/null || true
+        find "$GLOBAL_SKILLS_DIR/" -name "SKILL.md" -type f 2>/dev/null || true
     fi
 )
 

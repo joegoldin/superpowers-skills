@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Generic runner for skill scripts
+# Searches project skills (.superpowers), then global
 #
 # Usage: scripts/skill-run <skill-relative-path> [args...]
 # Example: scripts/skill-run skills/collaboration/remembering-conversations/tool/search-conversations "query"
@@ -10,14 +11,15 @@ if [[ $# -eq 0 ]]; then
     cat <<'EOF'
 Usage: scripts/skill-run <skill-relative-path> [args...]
 
-Runs scripts from skills directory.
+Runs scripts from skills, checking project first, then global.
 
 Examples:
   scripts/skill-run skills/collaboration/remembering-conversations/tool/search-conversations "query"
   scripts/skill-run skills/collaboration/remembering-conversations/tool/index-conversations --cleanup
 
-The script will be found at:
-  ${SUPERPOWERS_SKILLS_ROOT}/<skill-relative-path>
+The script will be found at (in priority order):
+  1. .superpowers/<skill-relative-path> (project-local, if exists)
+  2. ${SUPERPOWERS_SKILLS_ROOT}/<skill-relative-path> (global skills)
 EOF
     exit 1
 fi
@@ -28,17 +30,24 @@ shift  # Remove script path from args, leaving remaining args
 
 # Determine directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILLS_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+GLOBAL_SKILLS_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Try to run the script
-SCRIPT="${SKILLS_ROOT}/${SCRIPT_PATH}"
-if [[ -x "$SCRIPT" ]]; then
-    exec "$SCRIPT" "$@"
+# Try project-local first
+PROJECT_SCRIPT="$PWD/.superpowers/${SCRIPT_PATH}"
+if [[ -x "$PROJECT_SCRIPT" ]]; then
+    exec "$PROJECT_SCRIPT" "$@"
+fi
+
+# Fall back to global
+GLOBAL_SCRIPT="${GLOBAL_SKILLS_ROOT}/${SCRIPT_PATH}"
+if [[ -x "$GLOBAL_SCRIPT" ]]; then
+    exec "$GLOBAL_SCRIPT" "$@"
 fi
 
 # Not found
 echo "Error: Script not found: $SCRIPT_PATH" >&2
 echo "" >&2
 echo "Searched:" >&2
-echo "  $SCRIPT" >&2
+echo "  $PROJECT_SCRIPT (project)" >&2
+echo "  $GLOBAL_SCRIPT (global)" >&2
 exit 1
